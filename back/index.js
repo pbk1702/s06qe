@@ -13,6 +13,63 @@ app.get("/", async (req, res) => {
   return res.status(200).json({ message: "hello" });
 })
 
+import Event from './Event.js'
+import EventCategory from './EventCategory.js';
+app.get("/events", async (req, res) => {
+  
+  let events
+  try {
+    events = await Event.find({}) ?? [];    
+  } catch ( e ) {
+    console.error( e );
+    return res.status(400).json({ error: "Ошибка при получении списка мероприятий из базы данных" });
+  } 
+
+  let eventCategories
+  try {
+    eventCategories = await EventCategory.find({}) ?? []; 
+  } catch ( e ) {
+    console.error( e );
+    return res.status(400).json({ error: "Ошибка при получении списка категорий событий из базы данных" });
+  } 
+  
+  return res.status(200).json({ events, eventCategories });
+})
+
+app.post("/event-participate", async (req, res) => {
+
+  let { event, member } = req?.body;
+
+  const valid = event && event?._id && member && member?.email;
+
+  if(! valid) {
+    return res.status(400).json({ error: "Недостаточно параметров" });
+  }
+
+  event = await Event.findById( event._id );
+
+  if(! event) {
+    return res.status(400).json({ error: "События с таким id не найдено" });
+  }
+
+  const members = event.members ?? [];
+  if( event.members.find( v => v.email == member.email )) {
+    return res.status(400).json({ error: "Вы уже в списке участников события" });
+  }
+
+  event.members.push({ email: member.email })  
+
+  try {
+    await event.save();
+  } catch ( e ) {
+    console.error( e );
+    return res.status(400).json({ error: "Ошибка при сохранении статуса участия в базе данных " });
+  } 
+  
+  return res.status(200).json({ message: "Вы успешно записались в участники мероприятия" });
+})
+
+
 import Product from './Product.js';
 app.get("/products", async (req, res) => {
   try {
